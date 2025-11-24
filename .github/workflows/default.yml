@@ -1,4 +1,4 @@
-name: Build and Publish Branch Docker Image
+name: Build OCI from branch
 
 on:
   push:
