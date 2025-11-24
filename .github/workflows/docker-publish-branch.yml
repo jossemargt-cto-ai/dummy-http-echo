@@ -1,0 +1,79 @@
+name: Build and Publish Branch Docker Image
+
+on:
+  push:
+    branches:
+      - '**'
+      - '!main'
+      - '!master'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: jossemargt-cto-ai/dummy-http-echo
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sanitize branch name and create VERSION
+        id: version
+        run: |
+          # Extract branch name from ref (e.g., refs/heads/qa-1/sample-branch -> qa-1/sample-branch)
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+
+          # Sanitize branch name for OCI registry compatibility:
+          # - Replace '/' with '-'
+          # - Convert to lowercase
+          # - Remove any other invalid characters (only alphanumeric, dots, dashes, underscores allowed)
+          SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/\//-/g' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g')
+
+          # Get short SHA
+          SHORT_SHA=$(git rev-parse --short HEAD)
+
+          # Combine sanitized branch name with short SHA
+          VERSION="${SANITIZED_BRANCH}-${SHORT_SHA}"
+
+          echo "branch=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          echo "sanitized_branch=${SANITIZED_BRANCH}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Original branch: ${BRANCH_NAME}"
+          echo "Sanitized branch: ${SANITIZED_BRANCH}"
+          echo "Short SHA: ${SHORT_SHA}"
+          echo "Final VERSION: ${VERSION}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            branch=${{ steps.version.outputs.branch }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
