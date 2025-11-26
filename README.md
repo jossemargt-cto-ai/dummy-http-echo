@@ -1,3 +1,3 @@
-# HTTP Echo WRAPPER
+# Dummy HTTP echo
 
-Using Hashicor HTTP echo to test some CI/CD POC.
+Dead simple nginx OCI recipe for CI/CD POC runs.

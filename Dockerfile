@@ -1,5 +1,5 @@
-FROM hashicorp/http-echo:1.0.0
+FROM nginx:1.28-alpine
 
 ARG VERSION=0.0.0
 
-ENV ECHO_TEXT="version: v${VERSION}"
+RUN echo "<html><body>version: v${VERSION}</body></html>" >/usr/share/nginx/html/index.html
