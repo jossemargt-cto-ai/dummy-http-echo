@@ -27,6 +27,7 @@ jobs:
       - name: Determine VERSION
         id: version
         run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
           if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "tag" ]; then
             # Extract version from tag (e.g., refs/tags/v1.2.3 -> v1.2.3)
             VERSION="${GITHUB_REF#refs/tags/}"
@@ -37,6 +38,7 @@ jobs:
             VERSION="${LATEST_TAG}-${EPOCH}"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "Determined VERSION: ${VERSION}"
 
       - name: Set up Docker Buildx
@@ -54,11 +56,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
           tags: |
-            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}},value=${{ steps.version.outputs.version }}
-            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,pattern={{version}},value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.version.outputs.version }}-${{ steps.version.outputs.short_sha }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
