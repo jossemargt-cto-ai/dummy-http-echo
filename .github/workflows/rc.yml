@@ -59,8 +59,10 @@ jobs:
           flavor: |
             latest=false
           tags: |
-            type=raw,pattern={{version}},value=${{ steps.version.outputs.version }}
             type=raw,value=${{ steps.version.outputs.version }}-${{ steps.version.outputs.short_sha }}
+
+# ^ Removed this to force an scenario
+#            type=raw,pattern={{version}},value=${{ steps.version.outputs.version }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
